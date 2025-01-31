@@ -1,8 +1,15 @@
 ---
-title: "Untitled"
-format: html
+title: "PCA Lab"
+author: "Alon Robbins"
+format: 
+  html: 
+    embed-resources: true
+    code-fold: show
+    toc: true
 execute:
   eval: false
+  message: false
+  warning: false
 ---
 
 
@@ -29,7 +36,29 @@ Load in the data using `read_csv`. Perform some exploratory analysis on the data
 
 
 ```{r}
+hdi_data_raw <- read.csv(here("data", "hdi_clean.csv"))
+```
 
+What we pass into the PCA has to be numeric 
+
+Drop NAs
+
+Scale the data
+
+### data exploration
+
+```{r}
+hdi_data_long <- hdi_data_raw |>
+  pivot_longer(names_to = "name", values_to = "value", where(is.numeric))
+
+ggplot(hdi_data_long, aes(x = value)) +
+  geom_histogram() +
+  facet_wrap(~name, scales = "free_x")
+
+hdi_data <- hdi_data_raw |>
+  drop_na() |>
+  mutate(gnipc_2021 = log(gnipc_2021)) |>
+  mutate(hdicode = factor(hdicode, levels = c("Low", "Medium", "High", "Very High")))
 ```
 
 
@@ -37,9 +66,9 @@ Load in the data using `read_csv`. Perform some exploratory analysis on the data
 Run the pca using the `prcomp` function. What extra argument do we need to include? Make sure to select only the numeric columns for the pca
 
 ```{r}
-hdi_pca <- hdi_data %>% 
-  select(...) %>%
-  prcomp(...  )
+hdi_pca <- hdi_data |> 
+  select(where(is.numeric)) |>
+  prcomp(scale = T)
 ```
 
 
@@ -69,15 +98,26 @@ Create a dataframe with the necessary indgreidents to make a screeplot. One piec
 ```{r}
 pc_names <- colnames(hdi_pca$rotation)
 
+# given SD, square to get variance, then divided by total variance to get percent variance
+sd_vec <- hdi_pca$sdev
+var_vec <- sd_vec^2
+
+pct_v <- var_vec/sum(var_vec)
+
 # Use this data frame to make the screeplot
 pct_expl_df <- data.frame(pc=pc_names,
-                          
-  
-  
+                          pct_v = pct_v,
+                          v = var_vec
 )
 
 # Screeplot
 
+ggplot(pct_expl_df,aes(x = pc, y = pct_v)) +
+  geom_col() +
+  scale_y_continuous(labels = scales::percent, expand=(c(0,0))) + # makes bars go all the way down to the x = 0
+  labs( x = "prinicipal component",
+        y = "variance explained") +
+  theme_minimal()
 
 
 ```
